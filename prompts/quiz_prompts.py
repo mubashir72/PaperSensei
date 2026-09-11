@@ -9,7 +9,8 @@ Rules:
    - "explanation": string explaining why the answer is correct
    - "topic": string
    - "difficulty": "{difficulty}"
-   - "source_page": integer (default 1)
+   - "source_page": positive integer only if explicitly marked in the source, otherwise null
+3. If the text cannot support the question, return {{"insufficient_source": true}}.
 
 Source Text:
 {text}
@@ -29,4 +30,8 @@ Difficulty: {difficulty}
 
 Return ONLY a valid JSON object with keys:
 - "question", "options", "correct_answer", "explanation", "topic", "difficulty", "source_page"
+Use exactly four distinct options labeled A through D and a single correct_answer letter.
+Use the exact requested topic and difficulty. Ground everything in the context only.
+source_page must be null unless an explicit page reference supports the question.
+If the context is insufficient, return {{"insufficient_source": true}}.
 """
