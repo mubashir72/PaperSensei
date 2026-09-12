@@ -2,7 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function owns(uid) {
-      return request.auth != null && request.auth.uid == uid;
+      return request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email_verified == true;
     }
     match /users/{uid}/study_sessions/{sessionId} {
       allow read, delete: if owns(uid);

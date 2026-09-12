@@ -62,3 +62,7 @@ A live test against the configured papersensei-ba4b3 Firebase project passed:
 The local Firebase configuration is in the ignored .env file. Firestore rules were reported published by the user and their account-isolation behavior was verified by the live check. No service-account private key is used.
 
 Groq-backed content generation still requires GROQ_API_KEY; it was not live-tested as part of Firebase verification. Task 2 remains unchanged.
+
+## Email verification update
+
+77 offline tests pass, including verification gating, email request cooldown, verification status checks, token renewal, and failure handling. No real verification emails were sent by the automated tests. The stricter rules require publishing in Firebase Console; live verified-user access should be checked after the owner verifies an account.

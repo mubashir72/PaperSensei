@@ -92,7 +92,26 @@ def load_profile(auth):
     if not users or users[0].get("localId") != auth["uid"]:
         raise FirebaseError("Could not load your account profile.")
     user = users[0]
-    auth.update(display_name=user.get("displayName", ""), photo_url=user.get("photoUrl", ""))
+    auth.update(display_name=user.get("displayName", ""), photo_url=user.get("photoUrl", ""),
+                email_verified=user.get("emailVerified") is True)
+
+
+def send_verification_email(auth):
+    if time.time() - auth.get("verification_sent_at", 0) < 60:
+        raise FirebaseError("Please wait one minute before requesting another verification email.")
+    _auth_request("sendOobCode", {"requestType": "VERIFY_EMAIL", "idToken": fresh_token(auth)})
+    auth["verification_sent_at"] = time.time()
+
+
+def check_email_verification(auth):
+    # Fail closed until both account status and refreshed token are available.
+    auth["verification_ready"] = False
+    load_profile(auth)
+    if auth["email_verified"]:
+        fresh_token(auth, force=True)
+        auth["verification_ready"] = True
+    auth["verification_checked_at"] = time.time()
+    return auth["verification_ready"]
 
 
 def update_profile(auth, name):

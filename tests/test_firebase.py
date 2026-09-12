@@ -203,3 +203,33 @@ def test_guest_never_saves(store):
     state["study"]["source"] = "Guest notes"
     assert cloud.save_workspace(state)
     assert store.writes == 0
+
+def test_verification_api_refreshes_only_after_verified(monkeypatch, auth):
+    monkeypatch.setattr(fb, "load_profile", lambda a: a.update(email_verified=False))
+    calls = []
+    monkeypatch.setattr(fb, "fresh_token", lambda a, force=False: calls.append(force) or "renewed")
+    assert fb.check_email_verification(auth) is False
+    assert calls == []
+    monkeypatch.setattr(fb, "load_profile", lambda a: a.update(email_verified=True))
+    assert fb.check_email_verification(auth) is True
+    assert calls == [True]
+
+
+def test_verification_email_and_cooldown(monkeypatch, auth):
+    calls = []
+    monkeypatch.setattr(fb, "_auth_request", lambda e, p: calls.append((e, p)))
+    fb.send_verification_email(auth)
+    assert calls == [("sendOobCode", {"requestType": "VERIFY_EMAIL", "idToken": "id-token"})]
+    with pytest.raises(fb.FirebaseError, match="one minute"):
+        fb.send_verification_email(auth)
+    assert len(calls) == 1
+
+
+def test_verification_refresh_failure_stays_blocked(monkeypatch, auth):
+    monkeypatch.setattr(fb, "load_profile", lambda a: a.update(email_verified=True))
+    def fail(*a, **k):
+        raise fb.FirebaseError("Network unavailable")
+    monkeypatch.setattr(fb, "fresh_token", fail)
+    with pytest.raises(fb.FirebaseError):
+        fb.check_email_verification(auth)
+    assert auth["verification_ready"] is False

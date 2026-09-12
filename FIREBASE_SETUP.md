@@ -59,8 +59,17 @@ Optional live Firebase check:
 
     .venv/Scripts/python scripts/check_firebase.py --live
 
-The live check creates two temporary accounts, saves a sample session and two messages, verifies restore/list/token refresh, tests unauthenticated and cross-account access, and deletes the created data and accounts. It sends no email. Any cleanup failure is reported.
+The live check creates one temporary unverified account, verifies login and token renewal, checks that the deployed rules deny its database access, and removes the account. It creates no documents and sends no email. Verified-user saving should be checked with a verified account.
 
 ## Current boundaries
 
 Task 2 extraction is unchanged and remains pending. No raw PDFs are stored. Chroma, Google login, browser-persistent login cookies, and account deletion are not implemented. This version stores learning progress per study session, rather than calculating lifetime performance across sessions.
+
+## Required email verification
+
+New accounts request a verification email automatically. Signed-in accounts must verify their email before entering the study workspace. The verification screen provides a resend button (one-minute cooldown), a status-check button, and sign out. Firebase's hosted email-link handler completes verification; the app then checks account status and forces an ID-token refresh.
+
+Publish the updated firestore.rules file in Firebase Console → Firestore Database → Rules. Its owns() check now requires request.auth.token.email_verified == true in addition to matching the UID. This applies to existing accounts too; records are not deleted. Guest preview still works without cloud access.
+
+The app code and rules must both be deployed. The rules in this repository are not published automatically.
+

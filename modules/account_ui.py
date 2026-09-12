@@ -1,14 +1,57 @@
 """Streamlit account gate and saved-session browser."""
 import streamlit as st
+import time
 from modules.firebase_service import FirebaseError, configured, authenticate, reset_password, UserStore
 from modules.cloud_sessions import initialize, save_workspace, load_workspace, clear_workspace
 from modules.firebase_service import load_profile, update_profile
+from modules.firebase_service import send_verification_email, check_email_verification
 from modules.ui_style import avatar
+
+
+def verification_gate(auth):
+    error = None
+    if time.time() - auth.get("verification_checked_at", 0) >= 300:
+        try:
+            check_email_verification(auth)
+        except FirebaseError as exc:
+            error = str(exc)
+    if auth.get("verification_ready"):
+        return
+    st.title("Verify your email")
+    st.write("Open the verification link in your email, then return here to continue.")
+    st.text(auth["email"])
+    st.caption("Check your spam folder too. Your saved sessions will be available after verification.")
+    if error or auth.get("verification_send_error"):
+        st.error(error or auth["verification_send_error"])
+    if auth.get("verification_sent_at"):
+        st.success("Verification email requested. Check your inbox for the link.")
+    if st.button("I've verified my email", type="primary"):
+        try:
+            if check_email_verification(auth):
+                st.rerun()
+            st.warning("Your email is not verified yet. Click the link in the email and try again.")
+        except FirebaseError as exc:
+            st.error(str(exc))
+    if st.button("Resend verification email"):
+        try:
+            send_verification_email(auth)
+            auth.pop("verification_send_error", None)
+            st.rerun()
+        except FirebaseError as exc:
+            st.error(str(exc))
+    st.caption("You can request another email once per minute.")
+    if st.button("Sign out"):
+        st.session_state.clear()
+        st.rerun()
+    st.stop()
 
 
 def account_gate():
     initialize(st.session_state)
-    if st.session_state.get("auth") or st.session_state.get("guest"):
+    if st.session_state.get("auth"):
+        verification_gate(st.session_state.auth)
+        return
+    if st.session_state.get("guest"):
         return
     st.title("Welcome to PaperSensei")
     st.write("Sign in to save your quizzes, study material, and tutor conversations.")
@@ -34,6 +77,11 @@ def account_gate():
                     st.session_state.clear()
                     st.session_state.auth = auth
                     initialize(st.session_state)
+                    if mode == "Create account":
+                        try:
+                            send_verification_email(auth)
+                        except FirebaseError as exc:
+                            auth["verification_send_error"] = str(exc)
                     st.rerun()
             except FirebaseError as exc:
                 st.error(str(exc))

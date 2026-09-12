@@ -6,6 +6,11 @@ from tests.test_firebase import FakeStore
 
 
 def fake_services(monkeypatch):
+    def verified(auth):
+        import time
+        auth.update(verification_ready=True, verification_checked_at=time.time())
+        return True
+    monkeypatch.setattr(account_ui, "check_email_verification", verified)
     monkeypatch.setattr(account_ui, "load_profile", lambda auth: auth.update(display_name="Test Student", photo_url=""))
     FakeStore.documents = {}
     FakeStore.message_rows = {}
@@ -78,4 +83,28 @@ def test_failed_save_blocks_logout(monkeypatch):
     assert app.error
     click(app, "Sign out and discard unsaved changes")
     assert app.title[0].value == "Welcome to PaperSensei"
+    assert not app.exception
+
+def test_unverified_login_gate_and_verified_unlock(monkeypatch):
+    import time
+    fake_services(monkeypatch)
+    status = {"verified": False}
+    def check(auth):
+        auth.update(verification_ready=status["verified"], verification_checked_at=time.time())
+        return status["verified"]
+    monkeypatch.setattr(account_ui, "check_email_verification", check)
+    sent = []
+    monkeypatch.setattr(account_ui, "send_verification_email", lambda a: sent.append(a["uid"]))
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10).run()
+    login(app)
+    assert app.title[0].value == "Verify your email"
+    assert not any(r.label == "Navigate" for r in app.radio)
+    assert FakeStore.writes == 0
+    click(app, "Resend verification email")
+    assert sent == ["one"]
+    click(app, "I've verified my email")
+    assert app.warning
+    status["verified"] = True
+    click(app, "I've verified my email")
+    assert any(r.label == "Navigate" for r in app.radio)
     assert not app.exception
