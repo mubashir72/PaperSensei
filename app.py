@@ -9,13 +9,21 @@ from modules.adaptive_engine import new_performance
 from modules.document_gateway import pdf_available, read_uploaded_pdf, document_source
 from modules.past_paper_analyzer import analyze_past_papers, DISCLAIMER
 from modules.session_manager import new_session, set_question, submit_answer
+from modules.account_ui import account_gate, account_sidebar, saved_sessions_screen
+from modules.cloud_sessions import initialize, save_workspace, clear_workspace, load_workspace
+from modules.chat_ui import chat_screen
+from modules.ui_style import apply_style
 
 st.set_page_config(page_title="PaperSensei", page_icon="📖", layout="wide")
-if "study" not in st.session_state:
-    st.session_state.study = new_session()
-    st.session_state.papers = []
-    st.session_state.insights = None
+apply_style()
+account_gate()
+initialize(st.session_state)
 session = st.session_state.study
+
+
+def saved_rerun():
+    save_workspace(st.session_state)
+    st.rerun()
 
 
 def run_action(action, message):
@@ -37,35 +45,42 @@ def start_study(source):
     concepts = ai.extract_concepts(source)
     if not concepts:
         raise ValueError("No supported concepts were found. Try a more informative study section.")
+    if not save_workspace(st.session_state):
+        raise ValueError("Save the current session successfully before replacing its notes.")
+    clear_workspace(st.session_state)
     fresh = new_session()
     fresh.update(source=source, concepts=concepts)
     st.session_state.study = fresh
-    st.rerun()
+    st.session_state.study_title = ", ".join(concepts[:2])[:120]
+    saved_rerun()
 
 
 with st.sidebar:
-    st.title("PaperSensei")
-    st.caption("Understand. Practise. Improve.")
-    screen = st.radio("Navigate", ["Home", "Documents", "Quiz", "Past paper insights", "Session summary"])
+    st.html('<div class="ps-brand"><span class="ps-mark">▤</span><div><strong>PaperSensei</strong><small>Your personal study space</small></div></div>')
+    screen = st.radio("Navigate", ["Home", "Documents", "Quiz", "Tutor chat", "Past paper insights", "Session summary", "My saved sessions"], label_visibility="collapsed")
     st.divider()
-    st.caption("Your progress stays in this browser session. Download your report before leaving.")
-    if st.button("Reset session", width="stretch"):
-        for key in list(st.session_state):
-            del st.session_state[key]
-        st.rerun()
+    with st.expander("Study session", icon=":material/edit_note:"):
+        st.session_state.study_title = st.text_input("Session title", value=st.session_state.study_title, max_chars=120)
+        if st.session_state.get("auth") and st.button("Save now", width="stretch"):
+            save_workspace(st.session_state)
+        if st.button("Reset session", width="stretch"):
+            if save_workspace(st.session_state):
+                clear_workspace(st.session_state)
+                st.rerun()
+        st.caption("Start fresh. Your saved sessions stay in your account.")
+    account_sidebar()
 
 if screen == "Home":
-    st.title("Make your study material a personal tutor")
-    st.write("Explore concepts from your notes, practise adaptive questions, and discover patterns in past papers.")
+    st.html('<div class="ps-hero"><span class="ps-eyebrow">A little practice. A deeper understanding.</span><h1>Your next breakthrough<br>starts here.</h1><p>Turn your notes into clear explanations, focused practice, and progress you can see.</p></div>')
     cols = st.columns(3)
     for col, title, body in zip(cols, ["1. Add material", "2. Practise a concept", "3. See your progress"],
                                ["Use a chapter, notes, or examination papers.",
                                 "Start at medium difficulty and get help when you need it.",
                                 "Review strengths, weak topics, and recurring exam formats."]):
         with col:
-            st.subheader(title)
-            st.write(body)
-    st.info("Open Documents to begin. AI features require a Groq API key configured by the app owner.")
+            st.html(f'<div class="ps-step"><span>STEP {title[0]}</span><h3>{title[3:]}</h3><p>{body}</p></div>')
+    st.write("")
+    st.info("Start in Documents: add your notes, then choose a concept to practise or ask your tutor about.")
     if not pdf_available():
         st.caption("PDF extraction is awaiting the Task 2 module. You can use pasted text now.")
 
@@ -122,7 +137,7 @@ elif screen == "Documents":
         if st.button("Clear past papers"):
             st.session_state.papers = []
             st.session_state.insights = None
-            st.rerun()
+            saved_rerun()
 
 elif screen == "Quiz":
     st.title("Practise and understand")
@@ -147,7 +162,7 @@ elif screen == "Quiz":
                 else:
                     result = ai.generate_question(session["source"], topic, performance["current_difficulty"], "mcq")
                 set_question(session, result)
-                st.rerun()
+                saved_rerun()
             run_action(generate, "Preparing your question...")
         if question:
             st.subheader(question["question"])
@@ -169,7 +184,7 @@ elif screen == "Quiz":
                                 question["options"]["ABCD".index(question["correct_answer"])], session["source"])
                         except (ValueError, RuntimeError):
                             result["explanation_note"] = "The simpler explanation is unavailable; showing the original explanation."
-                    st.rerun()
+                    saved_rerun()
                 run_action(grade, "Checking your answer...")
             feedback = session["feedback"]
             if feedback:
@@ -230,4 +245,30 @@ elif screen == "Session summary":
             for row in history:
                 st.write(f'{row["topic"]} — {row["question"]}')
                 st.caption(f'Your answer: {row["student_answer"]} | Correct answer: {row["correct_answer"]}')
+
+elif screen == "My saved sessions":
+    saved_sessions_screen()
+
+elif screen == "Tutor chat":
+    chat_screen()
+
+if st.session_state.get("auth"):
+    save_workspace(st.session_state)
+    if st.session_state.get("cloud_error"):
+        st.error("Not fully saved: " + st.session_state.cloud_error)
+        st.caption("Your work remains in this browser session. Use Save now to retry before closing it.")
+        if st.button("Save work as a new session"):
+            from uuid import uuid4
+            st.session_state.study_id = uuid4().hex
+            st.session_state.cloud_version = None
+            st.session_state.cloud_payload = None
+            st.session_state.message_saved_ids = []
+            saved_rerun()
+        if st.session_state.get("cloud_version") and st.button("Discard local changes and reload saved session"):
+            def reload_saved():
+                load_workspace(st.session_state, st.session_state.study_id)
+                st.rerun()
+            run_action(reload_saved, "Restoring saved session…")
+    elif st.session_state.get("cloud_version"):
+        st.caption("All current changes saved to your account.")
 

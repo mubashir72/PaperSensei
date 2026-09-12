@@ -8,6 +8,8 @@ def click(app, label):
 
 
 def navigate(app, screen):
+    if any(b.label == "Preview without an account" for b in app.button):
+        click(app, "Preview without an account")
     next(r for r in app.radio if r.label == "Navigate").set_value(screen)
     return app.run()
 

@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owns(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid}/study_sessions/{sessionId} {
+      allow read, delete: if owns(uid);
+      allow create, update: if owns(uid)
+        && request.resource.data.keys().hasOnly(['title', 'payload', 'updated_at', 'schema_version'])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 120
+        && request.resource.data.payload is string
+        && request.resource.data.payload.size() <= 750000
+        && request.resource.data.updated_at is string
+        && request.resource.data.schema_version == 1;
+      match /messages/{messageId} {
+        allow read, delete: if owns(uid);
+        allow create, update: if owns(uid)
+          && request.resource.data.keys().hasOnly(['role', 'content', 'created_at'])
+          && request.resource.data.role in ['user', 'assistant']
+          && request.resource.data.content is string
+          && request.resource.data.content.size() <= 30000
+          && request.resource.data.created_at is string;
+      }
+    }
+  }
+}

@@ -46,3 +46,19 @@ These are not certified by mocked tests:
 
 Paste `tests/sample_data/biology_notes.txt` into Documents and extract concepts. Generate a medium MCQ, answer incorrectly, read the explanation, and answer the easier follow-up. Add each sample paper separately, analyze the two papers, then inspect and download the session report.
 
+
+## Firebase integration verification on September 12, 2026
+
+The account integration suite passes 72 offline tests, including registration/login errors, password reset, token renewal, user-scoped requests, path validation, save conflicts, message persistence, save failure recovery, guest isolation, and Streamlit login/chat/restore/logout flows.
+
+A live test against the configured papersensei-ba4b3 Firebase project passed:
+
+- Temporary account registration and password login.
+- ID token renewal.
+- Firestore save, session listing, workspace restore, and conversation history.
+- Denial of unauthenticated reads and cross-account reads/writes.
+- Removal of all temporary test data and accounts.
+
+The local Firebase configuration is in the ignored .env file. Firestore rules were reported published by the user and their account-isolation behavior was verified by the live check. No service-account private key is used.
+
+Groq-backed content generation still requires GROQ_API_KEY; it was not live-tested as part of Firebase verification. Task 2 remains unchanged.

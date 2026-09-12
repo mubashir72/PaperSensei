@@ -15,3 +15,11 @@ def no_live_ai(monkeypatch):
     def blocked(*args, **kwargs):
         raise AssertionError("Tests must not call the live Groq API.")
     monkeypatch.setattr(groq_service, "get_groq_client", blocked)
+
+
+@pytest.fixture(autouse=True)
+def no_live_firebase(monkeypatch):
+    import requests
+    def blocked(*args, **kwargs):
+        raise AssertionError("Tests must not call live Firebase. Mock the HTTP boundary.")
+    monkeypatch.setattr(requests, "request", blocked)

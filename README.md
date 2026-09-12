@@ -15,7 +15,7 @@ Use Python 3.11 or newer:
 ```powershell
 python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements-dev.txt
-Copy-Item .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 # Set GROQ_API_KEY in .env.
 .venv/Scripts/python -m streamlit run app.py
 ```
@@ -32,7 +32,7 @@ For macOS/Linux use `.venv/bin/python` instead. Set `GROQ_MODEL` to a model supp
 
 Each topic begins at medium. Two consecutive correct answers raise its level; two consecutive incorrect answers lower it. A pair consumes the streak, so the next level change requires another pair. Levels stay within easy/medium/hard. Every incorrect question schedules a follow-up one level below that question (easy remains easy), independent of the topic's underlying level. Follow-up answers count toward topic performance. Answer submission is locked after grading to prevent duplicate counts on rerun.
 
-Loading new notes starts fresh quiz progress only after concept extraction succeeds. Past-paper data is separate. API failures preserve existing results, and explanation failures fall back to the validated question explanation. Progress lasts for the Streamlit session only.
+Loading new notes starts a new workspace after concept extraction succeeds and the previous workspace saves. API failures preserve existing results, and explanation failures fall back to the validated question explanation. Signed-in users can resume cloud sessions; guest progress lasts for the browser session only.
 
 ## Task 2 integration contract
 
@@ -84,4 +84,10 @@ Live hosting, GitHub branch protection/PR operations, and a demonstration record
 
 ## Limitations
 
-Only MCQs are supported. OCR, accounts, persistent history, semantic topic merging, and large-document chunking are not implemented. AI output can still contain factual mistakes despite schema validation and source-grounding prompts. Past-paper frequency describes the supplied papers and does not guarantee future examination questions.
+Only MCQs are supported for quizzes. OCR, semantic topic merging, and large-document chunking are not implemented. AI output can still contain factual mistakes despite schema validation and source-grounding prompts. Past-paper frequency describes the supplied papers and does not guarantee future examination questions.
+
+## Firebase accounts and saved conversations
+
+The app now supports email/password registration and login, password reset, cloud quiz sessions, and source-grounded tutor chat. See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for console settings, rules, deployment configuration, data paths, and account behavior.
+
+The local .env already contains the supplied Firebase settings. Add a Groq key separately to enable AI generation. The Python app uses Firebase REST APIs with each user's ID token; no admin private key is required. Publish firestore.rules in your Firebase Console before saving account data.
