@@ -1,4 +1,4 @@
-"""Task 1 boundary for the teammate-owned PDF module. No extraction here."""
+"""Validate uploaded files and the PDF extraction interface."""
 import importlib
 from config import MAX_UPLOAD_BYTES, MAX_SOURCE_CHARS
 
@@ -24,6 +24,8 @@ def read_uploaded_pdf(file):
     processor = importlib.import_module("modules.pdf_processor")
     try:
         result = processor.extract_pdf(file)
+    except ValueError:
+        raise
     except Exception as exc:
         raise ValueError("This PDF could not be read. Try another text-based PDF.") from exc
     if not isinstance(result, dict) or not isinstance(result.get("filename"), str):
@@ -47,5 +49,5 @@ def read_uploaded_pdf(file):
 def document_source(document):
     text = "\n\n".join(f'[Page {p["page_number"]}]\n{p["text"]}' for p in document["pages"] if p["text"].strip())
     if len(text) > MAX_SOURCE_CHARS:
-        raise ValueError(f"Select a smaller chapter or paper (at most {MAX_SOURCE_CHARS:,} characters). Large-document chunking belongs to Task 2.")
+        raise ValueError(f"Select a smaller section (at most {MAX_SOURCE_CHARS:,} characters) from the extracted PDF.")
     return text

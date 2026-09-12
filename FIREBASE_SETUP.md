@@ -63,7 +63,7 @@ The live check creates one temporary unverified account, verifies login and toke
 
 ## Current boundaries
 
-Task 2 extraction is unchanged and remains pending. No raw PDFs are stored. Chroma, Google login, browser-persistent login cookies, and account deletion are not implemented. This version stores learning progress per study session, rather than calculating lifetime performance across sessions.
+Task 2 PDF extraction is implemented with page-preserving sections and warnings. No raw PDFs are stored. Chroma, Google login, browser-persistent login cookies, and account deletion are not implemented. This version stores learning progress per study session, rather than calculating lifetime performance across sessions.
 
 ## Required email verification
 
@@ -72,4 +72,3 @@ New accounts request a verification email automatically. Signed-in accounts must
 Publish the updated firestore.rules file in Firebase Console → Firestore Database → Rules. Its owns() check now requires request.auth.token.email_verified == true in addition to matching the UID. This applies to existing accounts too; records are not deleted. Guest preview still works without cloud access.
 
 The app code and rules must both be deployed. The rules in this repository are not published automatically.
-

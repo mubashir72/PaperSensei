@@ -6,7 +6,9 @@ A Streamlit tutor that turns study notes into conceptual MCQs, adapts practice t
 
 Tasks 1 and 5 implement the integrated app, adaptive engine, deterministic grading, session state, frontend, and offline regression tests. Tasks 3 and 4 were reviewed and corrected for strict response validation and complete question classification.
 
-**Task 2 remains assigned to the PDF-processing teammate.** No PDF extractor or text-cleaning implementation is included. Paste text to exercise the application now; PDF upload automatically enables when the teammate supplies the interface below. The pre-existing `utils/text_utils.py` placeholder is untouched.
+**Task 2 is implemented.** Choose Documents → Upload PDF → Load PDFs, preview the text, select a section, then choose Study selected section or Add selected papers. Page references are preserved. Blank and scanned pages are reported.
+
+PDF limits: 20 MB, 500 pages, and 2 million extracted characters per file. Each selectable source section contains at most 24,000 characters. For large past papers, select sections containing complete questions; only the sections you add are analyzed. OCR and password-protected PDFs are unsupported. The module returns the shared interface plus sections and warnings. Raw PDFs are not stored in Firebase.
 
 ## Local setup
 
@@ -50,7 +52,7 @@ Add `modules/pdf_processor.py` exposing `extract_pdf(file) -> dict`:
 }
 ```
 
-The gateway accepts Streamlit UploadedFile objects, checks extension/header and the 20 MB limit, validates the returned structure, and passes explicit page markers to the tutor. Empty/scanned outputs show an OCR message. Task 2 owns actual extraction, repeated-header cleanup, chunking, and real PDF fixtures. The current gateway rejects sources over 24,000 characters instead of silently truncating them; use a smaller section until chunking is integrated. It does not claim to validate PDF internals.
+The gateway accepts Streamlit UploadedFile objects, checks extension/header and the 20 MB limit, validates the returned structure, and passes explicit page markers to the tutor. Empty/scanned outputs show an OCR message. Task 2 handles extraction, repeated-margin cleanup, and bounded source sections. Select a section in the upload preview for large documents. It does not claim to validate PDF internals.
 
 ## Architecture
 
@@ -74,7 +76,7 @@ Groq transport uses a 30-second timeout and two SDK retries for transient errors
 .venv/Scripts/python -m pytest -q
 ```
 
-Tests mock Groq and prohibit accidental live client calls. PDF tests validate the integration boundary with fake extractor output; they do **not** certify real extraction. See `TEST_REPORT.md` for review findings, coverage, and remaining checks.
+Tests mock Groq and prohibit accidental live client calls. PDF tests validate the gateway and extract actual generated PDFs, including blank, scanned, corrupt, and large fixtures. See `TEST_REPORT.md` for review findings, coverage, and remaining checks.
 
 ## Deployment handoff
 
@@ -84,7 +86,7 @@ Live hosting, GitHub branch protection/PR operations, and a demonstration record
 
 ## Limitations
 
-Only MCQs are supported for quizzes. OCR, semantic topic merging, and large-document chunking are not implemented. AI output can still contain factual mistakes despite schema validation and source-grounding prompts. Past-paper frequency describes the supplied papers and does not guarantee future examination questions.
+Only MCQs are supported for quizzes. OCR and semantic topic merging are not implemented. Large documents have a section picker. AI output can still contain factual mistakes despite schema validation and source-grounding prompts. Past-paper frequency describes the supplied papers and does not guarantee future examination questions.
 
 ## Firebase accounts and saved conversations
 

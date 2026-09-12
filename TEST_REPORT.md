@@ -66,3 +66,6 @@ Groq-backed content generation still requires GROQ_API_KEY; it was not live-test
 ## Email verification update
 
 77 offline tests pass, including verification gating, email request cooldown, verification status checks, token renewal, and failure handling. No real verification emails were sent by the automated tests. The stricter rules require publishing in Firebase Console; live verified-user access should be checked after the owner verifies an account.
+
+## Task 2 completion
+Implemented real PDF extraction, page references, repeated-margin cleanup, source sections, and PDF preview/selection. The suite passed 87 tests; an additional PDF-to-study UI test also passed (88 tests overall). Scanned PDFs require OCR and remain unsupported. Large papers require selecting a section containing complete questions. Raw PDFs are not stored in Firebase.

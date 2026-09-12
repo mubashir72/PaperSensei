@@ -71,3 +71,16 @@ def test_past_paper_ui(monkeypatch):
     assert len(app.dataframe) == 1
     assert not app.exception
 
+
+def test_pdf_preview_to_study(monkeypatch):
+    from modules.pdf_processor import extract_pdf
+    from tests.pdf_fixtures import upload
+    monkeypatch.setattr(ai, "extract_concepts", lambda text: ["Photosynthesis"])
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10).run()
+    navigate(app, "Documents")
+    next(r for r in app.radio if r.label == "Input method").set_value("Upload PDF").run()
+    app.session_state["pdf_previews"] = [extract_pdf(upload(["Plants use sunlight."]))]
+    app.run()
+    click(app, "Study selected section")
+    assert app.session_state["study"]["source"] == "[Page 1]\nPlants use sunlight."
+    assert not app.exception

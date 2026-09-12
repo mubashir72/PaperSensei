@@ -114,17 +114,39 @@ elif screen == "Documents":
             def load_pdfs():
                 selected = files if isinstance(files, list) else [files]
                 docs = [read_uploaded_pdf(file) for file in selected]
-                sources = [document_source(doc) for doc in docs]
+                st.session_state.pdf_previews = docs
+                st.success(f"Read {len(docs)} PDF(s). Review the extracted text below.")
+            run_action(load_pdfs, "Reading PDFs...")
+        previews = st.session_state.get("pdf_previews", [])
+        selections = []
+        for index, doc in enumerate(previews):
+            st.subheader(doc["filename"])
+            st.caption(f'{doc["total_pages"]} pages · {len(doc["full_text"]):,} extracted characters')
+            for warning in doc.get("warnings", []):
+                st.warning(warning)
+            sections = doc["sections"]
+            if len(sections) > 1:
+                st.info("This PDF has multiple sections. Only the section you select will be used. For past papers, choose a section containing complete questions.")
+            section_index = st.selectbox("Study section", range(len(sections)),
+                format_func=lambda i, parts=sections: f'Section {i + 1} · pages {", ".join(map(str, parts[i]["page_numbers"]))}',
+                key=f'pdf_section_{index}_{doc["filename"]}')
+            section = sections[section_index]
+            selections.append({"name": doc["filename"] + (f" — section {section_index + 1}" if len(sections) > 1 else ""), "text": section["text"]})
+            with st.expander("Preview extracted text"):
+                st.text(section["text"])
+        if selections and st.button("Study selected section" if kind == "Notes / textbook" else "Add selected papers", type="primary"):
+            def use_pdfs():
                 if kind == "Notes / textbook":
-                    start_study(sources[0])
+                    if len(selections) != 1:
+                        raise ValueError("Load a single notes PDF to begin a study session.")
+                    start_study(selections[0]["text"])
                 else:
-                    for doc, source in zip(docs, sources):
-                        paper = {"name": doc["filename"], "text": source}
+                    for paper in selections:
                         if paper not in st.session_state.papers:
                             st.session_state.papers.append(paper)
                     st.session_state.insights = None
-                    st.success(f"Loaded {len(docs)} past papers.")
-            run_action(load_pdfs, "Reading PDFs...")
+                    st.success("Selected papers added. Open Past paper insights to analyze them.")
+            run_action(use_pdfs, "Preparing your study material...")
     if session["concepts"]:
         st.subheader("Extracted concepts")
         st.write(", ".join(session["concepts"]))
