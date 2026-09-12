@@ -1,3 +1,4 @@
+from pathlib import Path
 from streamlit.testing.v1 import AppTest
 from modules import account_ui, cloud_sessions, groq_service as ai
 from tests.test_app import click, navigate
@@ -27,7 +28,7 @@ def test_login_chat_save_restore_logout(monkeypatch):
     fake_services(monkeypatch)
     monkeypatch.setattr(ai, "extract_concepts", lambda text: ["Photosynthesis"])
     monkeypatch.setattr(ai, "tutor_reply", lambda source, messages: "Plants use sunlight.")
-    app = AppTest.from_file("app.py", default_timeout=10).run()
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10).run()
     assert app.title[0].value == "Welcome to PaperSensei"
     login(app)
     navigate(app, "Documents")
@@ -58,7 +59,7 @@ def test_login_error(monkeypatch):
     def fail(*a, **k):
         raise FirebaseError("The email or password is incorrect.")
     monkeypatch.setattr(account_ui, "authenticate", fail)
-    app = AppTest.from_file("app.py", default_timeout=10).run()
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10).run()
     login(app)
     assert app.error
     assert not app.session_state.filtered_state.get("auth")
@@ -67,7 +68,7 @@ def test_login_error(monkeypatch):
 
 def test_failed_save_blocks_logout(monkeypatch):
     fake_services(monkeypatch)
-    app = AppTest.from_file("app.py", default_timeout=10).run()
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10).run()
     login(app)
     app.session_state["study"]["source"] = "Important work"
     FakeStore.fail = True

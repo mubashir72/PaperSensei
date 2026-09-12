@@ -1,3 +1,4 @@
+from pathlib import Path
 from streamlit.testing.v1 import AppTest
 from modules import groq_service as ai
 
@@ -19,7 +20,7 @@ def test_app_complete_quiz_and_reset(monkeypatch, question):
     monkeypatch.setattr(ai, "generate_question", lambda *args: dict(question))
     monkeypatch.setattr(ai, "generate_explanation", lambda *args: "Sunlight provides energy.")
     monkeypatch.setattr(ai, "generate_followup_question", lambda *args: {**question, "difficulty": "easy"})
-    app = AppTest.from_file("app.py", default_timeout=10).run()
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10).run()
     assert not app.exception
     navigate(app, "Documents")
     app.text_area[0].set_value("Plants use sunlight to produce glucose.")
@@ -42,7 +43,7 @@ def test_app_complete_quiz_and_reset(monkeypatch, question):
 
 
 def test_error_keeps_source_and_progress(monkeypatch):
-    app = AppTest.from_file("app.py", default_timeout=10).run()
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10).run()
     navigate(app, "Documents")
     def fail(text):
         raise ValueError("GROQ_API_KEY is missing.")
@@ -60,7 +61,7 @@ def test_past_paper_ui(monkeypatch):
         "topics": [dict(topic="Energy", frequency=2, percentage=100,
                         question_types=["MCQ"], years_found=[2024])],
         "disclaimer": analyzer.DISCLAIMER})
-    app = AppTest.from_file("app.py", default_timeout=10).run()
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10).run()
     navigate(app, "Documents")
     next(r for r in app.radio if r.label == "Document type").set_value("Past paper").run()
     app.text_area[0].set_value("Annual Exam 2024: Q1. Define energy.")
