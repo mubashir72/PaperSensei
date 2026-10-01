@@ -14,6 +14,26 @@ PaperSensei helps students practise from their own notes and textbooks. Upload a
 - **Review progress.** See topic performance and download a session summary as CSV.
 - **Save and resume.** Use a verified email account to save sessions and conversations, or try guest mode without cloud storage.
 
+## Screenshots
+
+### Study workspace
+
+A central workspace for adding material, starting practice and reviewing progress.
+
+![PaperSensei home screen with study steps and sidebar navigation](img1.png)
+
+### AI tutor
+
+Ask questions about your study material and explore concepts through follow-up conversations.
+
+![PaperSensei tutor chat explaining reinforcement learning](img2.png)
+
+### Learning progress
+
+Review answers, accuracy and topic difficulty, then download a quiz report.
+
+![PaperSensei session summary showing quiz results and topic performance](img3.png)
+
 ## Technology stack
 
 | Technology | Purpose |
