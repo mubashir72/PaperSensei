@@ -1,95 +1,170 @@
 # PaperSensei
 
-A Streamlit tutor that turns study notes into conceptual MCQs, adapts practice to each topic, and summarizes question frequencies in uploaded past papers.
+**An AI study assistant for conceptual learning and exam preparation.**
 
-## Status and ownership
+PaperSensei helps students practise from their own notes and textbooks. Upload a text-based PDF or paste study material to generate conceptual quizzes, understand mistakes, and ask questions through an AI tutor. Topic-based difficulty adjustment and saved sessions help students continue learning at their own pace.
 
-Tasks 1 and 5 implement the integrated app, adaptive engine, deterministic grading, session state, frontend, and offline regression tests. Tasks 3 and 4 were reviewed and corrected for strict response validation and complete question classification.
+## Features
 
-**Task 2 is implemented.** Choose Documents → Upload PDF → Load PDFs, preview the text, select a section, then choose Study selected section or Add selected papers. Page references are preserved. Blank and scanned pages are reported.
+- **Study from your documents.** Extract PDF text with page references, preview the content, and choose a section to study.
+- **Practise conceptual questions.** Generate multiple-choice questions based on selected material and receive immediate answer feedback.
+- **Adapt practice by topic.** Difficulty changes with consecutive correct or incorrect answers. Mistakes lead to simpler explanations and easier follow-up questions.
+- **Ask an AI tutor.** Discuss the current material in a conversation saved with your study session.
+- **Explore past papers.** Review topic counts and question frequencies across the paper sections you add.
+- **Review progress.** See topic performance and download a session summary as CSV.
+- **Save and resume.** Use a verified email account to save sessions and conversations, or try guest mode without cloud storage.
 
-PDF limits: 20 MB, 500 pages, and 2 million extracted characters per file. Each selectable source section contains at most 24,000 characters. For large past papers, select sections containing complete questions; only the sections you add are analyzed. OCR and password-protected PDFs are unsupported. The module returns the shared interface plus sections and warnings. Raw PDFs are not stored in Firebase.
+## Technology stack
 
-## Local setup
+| Technology | Purpose |
+| --- | --- |
+| Python | Application logic, grading and adaptive practice |
+| Streamlit | Interactive web interface |
+| pdfplumber | PDF text extraction and page references |
+| Groq API | Concepts, questions, explanations and tutor replies |
+| Firebase Authentication | Email and password accounts, verification and password reset |
+| Cloud Firestore | Saved study sessions and conversations |
+| pytest and GitHub Actions | Automated tests and continuous integration |
 
-Use Python 3.11 or newer:
+## Getting started
+
+### Prerequisites
+
+- Python 3.11 or newer.
+- A Groq API key for AI features.
+- A Firebase project for account access and cloud saving. Firebase is optional for guest use.
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/mubashir72/PaperSensei.git
+cd PaperSensei
+```
+
+### 2. Install dependencies
+
+**Windows PowerShell**
 
 ```powershell
 python -m venv .venv
-.venv/Scripts/python -m pip install -r requirements-dev.txt
+.venv/Scripts/python -m pip install -r requirements.txt
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-# Set GROQ_API_KEY in .env.
+```
+
+**macOS or Linux**
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+test -f .env || cp .env.example .env
+```
+
+### 3. Configure the environment
+
+Add your credentials to `.env`:
+
+```dotenv
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=openai/gpt-oss-20b
+
+# Optional for accounts and cloud saving
+FIREBASE_API_KEY=your_firebase_web_api_key
+FIREBASE_PROJECT_ID=your_firebase_project_id
+```
+
+`GROQ_MODEL` selects the model used for AI requests. Use a model available to your Groq account. Keep `.env` out of version control and restart the app after changing settings.
+
+For Firebase accounts:
+
+1. Enable **Email/Password** in Firebase Authentication.
+2. Create the default Cloud Firestore database.
+3. Publish the contents of [firestore.rules](firestore.rules) in the Firestore rules editor.
+4. Register through the app and verify your email before opening the account workspace.
+
+The app uses each user's Firebase ID token. A Firebase Admin service account is not required. See [Firebase setup](FIREBASE_SETUP.md) for configuration and storage details.
+
+### 4. Run the app
+
+**Windows PowerShell**
+
+```powershell
 .venv/Scripts/python -m streamlit run app.py
 ```
 
-For macOS/Linux use `.venv/bin/python` instead. Set `GROQ_MODEL` to a model supported by your Groq account if the existing default is unavailable. Never commit API keys. On Streamlit deployments, configure `GROQ_API_KEY` in app secrets instead of a local `.env`.
+**macOS or Linux**
 
-## Study workflow
-
-1. Open **Documents**, choose notes/textbook, paste an informative section, and extract concepts.
-2. Open **Quiz**, choose a concept, and generate a question.
-3. Submit an answer. An incorrect answer shows a simpler explanation and requires a follow-up on the same topic.
-4. Add one or more past papers separately through Documents, then open **Past paper insights** and analyze them.
-5. View **Session summary** and download a CSV report. Reset session clears material, questions, papers, analysis, and progress.
-
-Each topic begins at medium. Two consecutive correct answers raise its level; two consecutive incorrect answers lower it. A pair consumes the streak, so the next level change requires another pair. Levels stay within easy/medium/hard. Every incorrect question schedules a follow-up one level below that question (easy remains easy), independent of the topic's underlying level. Follow-up answers count toward topic performance. Answer submission is locked after grading to prevent duplicate counts on rerun.
-
-Loading new notes starts a new workspace after concept extraction succeeds and the previous workspace saves. API failures preserve existing results, and explanation failures fall back to the validated question explanation. Signed-in users can resume cloud sessions; guest progress lasts for the browser session only.
-
-## Task 2 integration contract
-
-Add `modules/pdf_processor.py` exposing `extract_pdf(file) -> dict`:
-
-```python
-{
-    "filename": file.name,
-    "total_pages": 2,
-    "pages": [
-        {"page_number": 1, "text": "Clean page one text"},
-        {"page_number": 2, "text": "Clean page two text"},
-    ],
-    "full_text": "Clean page one text\nClean page two text",
-}
+```bash
+.venv/bin/python -m streamlit run app.py
 ```
 
-The gateway accepts Streamlit UploadedFile objects, checks extension/header and the 20 MB limit, validates the returned structure, and passes explicit page markers to the tutor. Empty/scanned outputs show an OCR message. Task 2 handles extraction, repeated-margin cleanup, and bounded source sections. Select a section in the upload preview for large documents. It does not claim to validate PDF internals.
+Open the local URL printed in your terminal, usually `http://localhost:8501`.
 
-## Architecture
+## Using PaperSensei
 
-- `app.py`: navigation, input, quizzes, insights, summary, safe report export.
-- `config.py`: limits, model selection, environment/Streamlit secrets.
-- `modules/adaptive_engine.py`: pure topic progression.
-- `modules/session_manager.py`: session creation, questions, duplicate-safe grading.
-- `modules/answer_evaluator.py`: deterministic MCQ evaluation.
-- `modules/quiz_generator.py`: shared question schema validation.
-- `modules/groq_service.py`: concept/question/explanation/follow-up APIs.
-- `modules/document_gateway.py`: teammate PDF boundary.
-- `modules/past_paper_analyzer.py`: all-question batched topic analysis.
-- `prompts/`: source-grounded structured response instructions.
-- `tests/`: offline service, progression, gateway, and Streamlit AppTest tests.
+1. **Load material.** Open Documents, paste notes or upload a PDF, preview the text, and select a section to study.
+2. **Practise.** Extract concepts, open Quiz, choose a topic, and generate a question.
+3. **Learn from feedback.** Submit an answer and review the explanation. After a mistake, complete an easier follow-up on the same topic.
+4. **Ask questions.** Open Tutor chat to discuss the current material.
+5. **Analyze past papers.** Add paper sections through Documents and open Past paper insights to review topic frequencies.
+6. **Review and continue.** Open Session summary to view results and download a report. Verified users can resume work through My saved sessions.
 
-Groq transport uses a 30-second timeout and two SDK retries for transient errors. Malformed JSON/schema responses get one extra generation attempt and then a visible error. Incomplete JSON is never salvaged into invented records. Past-paper classification uses batches of five but processes every batch; it rejects incomplete batch results. Years are attributed only from an unambiguous paper header, never from a guessed model year. Topic normalization combines case/whitespace variants; semantic synonyms may still need review.
+### Adaptive practice
+
+Each topic starts at medium difficulty. Two consecutive correct answers raise the level, and two consecutive incorrect answers lower it. Levels stay within easy, medium and hard. Each level change resets that streak, so another change requires a new pair of answers.
+
+Every incorrect answer schedules a follow-up one level below the question answered. Easy questions remain easy. Follow-up answers count toward topic performance, and a submitted answer is graded only once.
+
+### Accounts and saved work
+
+Verified users can save source text, quiz progress, past-paper insights and tutor conversations. Raw PDF files are not stored. Resetting the workspace starts a new session and preserves previously saved cloud sessions.
+
+If saving fails, the app shows an error and keeps local work available for retry. Guest progress lasts only for the current browser session and is not saved to Firebase.
+
+## Project structure
+
+```text
+PaperSensei/
+  app.py               Application interface and navigation
+  config.py            Settings, limits and secret loading
+  modules/             PDF processing, AI services, quizzes and accounts
+  prompts/             Instructions for source-based AI responses
+  tests/               Unit and interface tests
+  scripts/             Diagnostic utilities
+  .streamlit/          Streamlit configuration
+  .github/workflows/   Continuous integration
+  firestore.rules      Rules for account-specific data access
+```
 
 ## Testing
 
+Install the development dependencies and run the test suite:
+
 ```powershell
+.venv/Scripts/python -m pip install -r requirements-dev.txt
 .venv/Scripts/python -m pytest -q
 ```
 
-Tests mock Groq and prohibit accidental live client calls. PDF tests validate the gateway and extract actual generated PDFs, including blank, scanned, corrupt, and large fixtures. See `TEST_REPORT.md` for review findings, coverage, and remaining checks.
+On macOS or Linux, replace `.venv/Scripts/python` with `.venv/bin/python`.
 
-## Deployment handoff
+Tests cover adaptive progression, grading, PDF handling, AI response validation, account behavior and the Streamlit interface. AI calls are mocked for offline testing. GitHub Actions runs the suite on pushes and pull requests.
 
-The repository includes `requirements.txt` and `.streamlit/config.toml`. To deploy, connect this repository to Streamlit Community Cloud, select `app.py`, and add `GROQ_API_KEY` in secrets. The app can be demonstrated with pasted text before Task 2 lands.
+## Deployment
 
-Live hosting, GitHub branch protection/PR operations, and a demonstration recording have not been performed. Final PDF acceptance and a live Groq smoke test require the teammate's extractor and a configured API account.
+To run the project on Streamlit Community Cloud, connect this repository and select `app.py` as the entry point. Add credentials in the app's secrets settings using TOML:
 
-## Limitations
+```toml
+GROQ_API_KEY = "your_groq_api_key"
+FIREBASE_API_KEY = "your_firebase_web_api_key"
+FIREBASE_PROJECT_ID = "your_firebase_project_id"
+```
 
-Only MCQs are supported for quizzes. OCR and semantic topic merging are not implemented. Large documents have a section picker. AI output can still contain factual mistakes despite schema validation and source-grounding prompts. Past-paper frequency describes the supplied papers and does not guarantee future examination questions.
+Firebase entries are needed only for accounts and cloud saving. Configure Authentication and publish the Firestore rules as described above. Do not upload your local `.env` file.
 
-## Firebase accounts and saved conversations
+## Supported documents and limitations
 
-The app now supports email/password registration and login, password reset, cloud quiz sessions, and source-grounded tutor chat. See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for console settings, rules, deployment configuration, data paths, and account behavior.
-
-The local .env already contains the supplied Firebase settings. Add a Groq key separately to enable AI generation. The Python app uses Firebase REST APIs with each user's ID token; no admin private key is required. Publish firestore.rules in your Firebase Console before saving account data.
+- PDF uploads support text-based documents up to 20 MB, 500 pages and 2 million extracted characters per file.
+- Each selectable source section contains up to 24,000 characters. Past-paper analysis covers only the sections you add, so select sections containing complete questions.
+- Scanned documents requiring OCR and password-protected PDFs are not supported.
+- Quizzes currently support multiple-choice questions. Progress is tracked per study session.
+- AI responses can contain mistakes. Check important explanations against the original material.
+- Past-paper frequencies describe the supplied papers and do not predict future exam questions.
