@@ -67,7 +67,7 @@ def test_login_error(monkeypatch):
     app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10).run()
     login(app)
     assert app.error
-    assert not app.session_state.filtered_state.get("auth")
+    assert "auth" not in app.session_state or not app.session_state["auth"]
     assert not app.exception
 
 
